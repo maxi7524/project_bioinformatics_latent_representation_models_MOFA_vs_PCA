@@ -26,13 +26,43 @@ The foundational architecture relies on a uniform two-dimensional latent space $
 ***
 
 ### Analysis 2: Empirical Real Multi-Omics Dataset
-*#TODO - Norbert*
+
+The second analysis applies PCA and MOFA to a real multi-omics breast cancer dataset. We used the **TCGA-BRCA** cohort downloaded from [LinkedOmics](https://www.linkedomics.org/data_download/TCGA-BRCA/). Three molecular views were analyzed: RNA-seq, DNA methylation and miRNA expression. The downstream task was classification of **PAM50 molecular subtype**.
 
 #### Methodology
-*#TODO - Norbert*
+
+The original LinkedOmics files store samples in columns and features in rows, so all matrices were transposed before analysis. PAM50 subtype was selected as the target variable. Samples without PAM50 annotation were removed, and only samples present in all three omics views were retained. This resulted in **430 common samples**.
+
+The initial feature spaces contained:
+
+* RNA-seq: **20 155 genes**
+* DNA methylation: **20 106 features**
+* miRNA: **823 features**
+
+Missing values were almost absent, except for a small fraction in the methylation matrix. Remaining missing values were imputed using feature-wise medians. To reduce dimensionality and computational cost, the most variable features were selected independently for each view:
+
+* RNA-seq: top **2000** most variable features
+* DNA methylation: top **2000** most variable features
+* miRNA: top **500** most variable features
+
+Each view was standardized independently before fitting PCA and MOFA. This prevents one omics layer from dominating the latent representation only because of a larger numeric scale.
+
+For each view, we fitted both PCA and MOFA with the same number of latent dimensions, `K = 5`. In addition, two multi-view baselines were evaluated:
+
+* **PCA_concatenated** - PCA fitted on the horizontally concatenated multi-omics matrix.
+* **MOFA_shared** - MOFA fitted jointly on RNA-seq, methylation and miRNA.
+
+All embeddings were evaluated using the same downstream strategy as in Task 1: a fixed 75/25 train-test split with `seed = 1946`. A logistic regression classifier was trained on each embedding. Because PAM50 classes were imbalanced, the main metrics were **balanced accuracy** and **macro F1**.
 
 #### Conclusions
-*#TODO - Norbert*
+
+The best result was obtained by **MOFA fitted only on RNA-seq**, with balanced accuracy of **0.865** and macro F1 of **0.834**. The second-best model was **PCA fitted only on RNA-seq**, with balanced accuracy of **0.851** and macro F1 of **0.809**. This shows that RNA-seq contained the strongest PAM50 classification signal among the tested omics views.
+
+The multi-view models did not outperform the strongest RNA-seq-only models. **PCA_concatenated** reached balanced accuracy of **0.802**, while **MOFA_shared** reached **0.793**. Methylation contained useful but weaker subtype-related signal, with balanced accuracy around **0.75**. miRNA was the weakest view, with balanced accuracy around **0.67**.
+
+These results are biologically expected, because PAM50 subtypes are primarily defined by gene expression profiles. Therefore, RNA-seq should naturally be the most informative view for this classification task. The confusion matrix for the best model, **MOFA_RNAseq**, showed good separation of Basal and LumA samples, while most errors occurred between Her2 and Luminal subtypes.
+
+Overall, the empirical analysis supports the main conclusion from the simulation: **multi-view integration is not automatically better than single-view analysis**. Integration is useful when complementary information is truly distributed across views. In the TCGA-BRCA dataset, however, most PAM50-relevant signal was already captured by RNA-seq, so adding methylation and miRNA did not provide a clear predictive advantage.
 
 ---
 
@@ -44,7 +74,7 @@ The foundational architecture relies on a uniform two-dimensional latent space $
 
 ## Authors
 * **Author 1:** [Max Stróżyk](https://github.com/maxi7524) – Conception of simulation matrices, execution of the synthetic non-linear manifold pipelines, and downstream evaluation architecture.
-* **Author 2:** [Norbert Szala](https://github.com/NorbertSzala) – *#TODO - Norbert*
+* **Author 2:** [Norbert Szala](https://github.com/NorbertSzala) – Task2: Preparation and preprocessing of the TCGA-BRCA multi-omics dataset, implementation of PCA and MOFA models for single-view and multi-view real-data analysis, downstream PAM50 subtype classification, result visualization, and biological interpretation.
 
 
 
